@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Graduate Jobs Gap Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: sticky-free two-column workbench. Controls left, KPI strip + four linked charts right; stacks on phones. */
+:root {
+  --bg: #f2f5fa;
+  --surface: #ffffff;
+  --ink: #0f1a2b;
+  --muted: #566274;
+  --line: #dde3ee;
+  --soft: #eaeff7;
+  --accent: #2a78d6;
+  --s1: #2a78d6;   /* graduate-level jobs / entrants */
+  --s2: #eb6834;   /* unemployed / hires contrast */
+  --s3: #1baf7a;   /* below-qualification jobs */
+  --ghost: #8b96a8;
+  --font-head: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e141d; --surface: #161e2a; --ink: #e9eef6; --muted: #9ba8ba; --line: #283343; --soft: #1e2837;
+    --accent: #3987e5; --s1: #3987e5; --s2: #d95926; --s3: #199e70; --ghost: #7d8aa0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e141d; --surface: #161e2a; --ink: #e9eef6; --muted: #9ba8ba; --line: #283343; --soft: #1e2837;
+  --accent: #3987e5; --s1: #3987e5; --s2: #d95926; --s3: #199e70; --ghost: #7d8aa0;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; }
+.wrap { max-width: 1240px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--font-head); font-weight: 600; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(22px, 3.4vw, 30px); letter-spacing: -0.01em; }
+h2 { font-size: 15px; }
+h3 { font-size: 13px; }
+.lede { color: var(--muted); max-width: 70ch; margin: 6px 0 0; }
+header.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; }
+.tabs { display: flex; gap: 4px; background: var(--soft); padding: 3px; border-radius: 10px; }
+.tabs button { font: inherit; font-weight: 500; border: 0; background: transparent; color: var(--muted); padding: 7px 14px; border-radius: 8px; cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(15,26,43,.12); }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.note { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; color: var(--muted); margin-bottom: 16px; }
+.note b { color: var(--ink); font-weight: 600; }
+.layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+.controls { display: flex; flex-direction: column; gap: 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: inherit; font-size: 12.5px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 5px 11px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ctl { display: grid; gap: 4px; }
+.ctl label { display: flex; justify-content: space-between; gap: 8px; font-weight: 500; }
+.ctl output { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; white-space: nowrap; }
+.ctl small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
+.reset { font: inherit; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 8px; padding: 7px 12px; cursor: pointer; justify-self: start; }
+.main { display: grid; gap: 16px; min-width: 0; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.kpi .lab { color: var(--muted); font-size: 12px; }
+.kpi .val { font-family: var(--font-head); font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.15; margin-top: 2px; }
+.kpi .val span { font-size: 14px; color: var(--muted); font-weight: 500; }
+.kpi .cmp { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.scrub { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.scrub .yr { font-family: var(--font-head); font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.scrub .read { grid-column: 1 / -1; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.scrub .read b { color: var(--ink); font-weight: 600; }
+.charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1100px) { .charts { grid-template-columns: minmax(0, 1fr); } }
+.chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin-bottom: 4px; }
+.chart-head p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 4px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 14px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 5px; }
+.legend i.sq { height: 10px; border: 0; border-radius: 2px; }
+.legend i.dash { border-top-style: dashed; border-top-width: 2px; }
+.cv { width: 100%; touch-action: pan-y; }
+.cv svg { display: block; width: 100%; overflow: visible; }
+svg text { font-family: var(--font-body); font-size: 11.5px; fill: var(--muted); }
+svg text.strong { fill: var(--ink); font-weight: 600; }
+svg .grid { stroke: var(--line); stroke-width: 1; }
+svg .axis { stroke: var(--ghost); stroke-width: 1; }
+details.tbl summary { cursor: pointer; font-weight: 500; }
+.scroll { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; }
+th:first-child, td:first-child { text-align: left; }
+tr.sel td { background: var(--soft); }
+.facts td, .facts th { text-align: left; white-space: normal; vertical-align: top; }
+.facts td.v { font-weight: 600; white-space: nowrap; }
+.facts a { color: var(--accent); }
+.tier { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--soft); white-space: nowrap; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.assume { color: var(--muted); font-size: 13px; }
+.assume li { margin: 4px 0; }
+@media (prefers-reduced-motion: no-preference) { .kpi .val { transition: color .2s; } }
+
+body { margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Graduate Jobs Gap Simulator</h1>
+      <p class="lede">Move the levers to see how graduate hiring, enrolment growth and skills change unemployment and under-employment among young Indian graduates through 2035.</p>
+    </div>
+    <div class="tabs" role="group" aria-label="View">
+      <button type="button" id="tab-sim" aria-pressed="true">Simulation</button>
+      <button type="button" id="tab-facts" aria-pressed="false">Fact base</button>
+    </div>
+  </header>
+
+  <section id="view-sim">
+    <p class="note"><b>Starting point:</b> 29.1% graduate-youth unemployment (ILO and IHD) with 11 million jobless graduates aged 20-29 (State of Working India), and 5.0 million graduate entrants against 2.8 million jobs a year. <b>Modelled, not measured:</b> no official series counts graduates working below their qualification, so that share is an assumption you can change.</p>
+    <div class="layout">
+      <aside class="panel controls" aria-label="Scenario controls">
+        <div>
+          <h2>Scenario</h2>
+          <div class="chips" id="presets"></div>
+        </div>
+        <div id="sliders" class="controls"></div>
+        <button type="button" class="reset" id="reset">Reset to business as usual</button>
+      </aside>
+
+      <div class="main">
+        <div class="kpis" id="kpis"></div>
+
+        <div class="panel scrub">
+          <label for="year" class="lab" style="color:var(--muted)">Year</label>
+          <input type="range" id="year" min="2024" max="2035" step="1" value="2035">
+          <span class="yr" id="yr">2035</span>
+          <div class="read" id="read"></div>
+        </div>
+
+        <div class="charts">
+          <div class="panel">
+            <div class="chart-head"><div><h2>Entrants versus hires</h2><p>Graduates joining the labour force and graduates who get a job, per year</p></div></div>
+            <div class="legend"><span><i style="border-color:var(--s1)"></i>Graduate entrants</span><span><i style="border-color:var(--s2)"></i>Graduate hires</span><span id="lg-a-ghost"><i class="dash" style="border-color:var(--ghost)"></i>Business as usual</span></div>
+            <div class="cv" id="chA"></div>
+          </div>
+          <div class="panel">
+            <div class="chart-head"><div><h2>Graduate-youth unemployment rate</h2><p>Share of the graduate labour force (aged 20-29) without work</p></div></div>
+            <div class="legend"><span><i style="border-color:var(--s2)"></i>This scenario</span><span id="lg-b-ghost"><i class="dash" style="border-color:var(--ghost)"></i>Business as usual</span></div>
+            <div class="cv" id="chB"></div>
+          </div>
+          <div class="panel">
+            <div class="chart-head"><div><h2>Who is in the graduate labour force</h2><p>Millions of graduates aged 20-29 by work outcome</p></div></div>
+            <div class="legend"><span><i class="sq" style="background:var(--s1)"></i>Graduate-level job</span><span><i class="sq" style="background:var(--s3)"></i>Job below qualification</span><span><i class="sq" style="background:var(--s2)"></i>Unemployed</span></div>
+            <div class="cv" id="chC"></div>
+          </div>
+          <div class="panel">
+            <div class="chart-head"><div><h2>What moves 2035 unemployment most</h2><p>Each input swept across its plausible range, others held at your settings</p></div></div>
+            <div class="legend"><span><i class="sq" style="background:var(--s3)"></i>Input at low end</span><span><i class="sq" style="background:var(--s1)"></i>Input at high end</span></div>
+            <div class="cv" id="chD"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <details class="tbl"><summary>Year-by-year table</summary>
+            <div class="scroll"><table id="tbl"></table></div>
+          </details>
+        </div>
+
+        <div class="panel">
+          <h2>How the model works</h2>
+          <ul class="assume">
+            <li>Each year, graduating cohorts (derived from higher-education enrolment, AISHE 2023-24) send a fixed share into the labour force. That share is set so 2024 matches the 5.0 million entrants reported by State of Working India.</li>
+            <li>Hiring is demand-driven and grows at your chosen rate from 2.8 million in 2024. The starting stocks are balanced so unemployment would stay flat without the changes you make.</li>
+            <li>The share of hires landing in graduate-level jobs equals employability (India Skills Report, trend only) times your "graduate-level share" setting. The rest take jobs below their qualification. Each year 10% age out of the 20-29 band, discouraged jobseekers leave at your set rate, and 5% of under-employed graduates move up.</li>
+            <li>The 2024 under-employed share (about 49%) is an upper-bound proxy, not an official statistic. Read trends and differences between scenarios, not exact levels.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-facts" hidden>
+    <p class="note">Every input comes from a published source. Tier tells you how much weight it carries: <b>A</b> official statistics, <b>B</b> international or institutional research, <b>C</b> private survey (used only for the employability trend), <b>M</b> modelled or derived here. Monthly figures (current weekly status) are not comparable with annual usual-status figures.</p>
+    <div class="panel">
+      <div class="filters" id="tierFilters" role="group" aria-label="Filter by tier"></div>
+      <div class="scroll"><table class="facts" id="facts"></table></div>
+    </div>
+  </section>
+</div>
+
+<script>
+/*MODEL_START*/
+const K = { ENROL0: 4.50e7, UG: 0.768, PG: 0.121, UGY: 3.3, PGY: 2.0, ENTR0: 5.0e6, U0: 11e6 };
+K.GOUT_PER = K.UG / K.UGY + K.PG / K.PGY;
+K.GOUT0 = K.ENROL0 * K.GOUT_PER;
+K.ENTRY0 = K.ENTR0 / K.GOUT0;
+const EMP_KNOWN = { 2024: 0.5125, 2025: 0.5481, 2026: 0.5635 };
+const YEARS = []; for (let y = 2024; y <= 2035; y++) YEARS.push(y);
+const DEFAULTS = { enrol: 0.025, hire: 0.04, empGain: 0.010, empCap: 0.80, kappa: 1.0, entryScale: 1.0,
+  ageOut: 0.10, discouraged: 0.10, upgrade: 0.05, ur0: 0.291 };
+function employability(y, p) {
+  if (EMP_KNOWN[y] !== undefined) return EMP_KNOWN[y];
+  return Math.min(EMP_KNOWN[2026] + p.empGain * (y - 2026), p.empCap);
+}
+function run(over) {
+  const p = Object.assign({}, DEFAULTS, over || {});
+  const a = p.ageOut, d = p.discouraged, u = p.upgrade;
+  let U = K.U0;
+  const LF0 = U / p.ur0;
+  let E = LF0 - U;
+  const eps0 = employability(2024, p);
+  let Eg = E * eps0, Eu = E * (1 - eps0);
+  const N0 = K.ENTR0 * p.entryScale;
+  const H0 = N0 - (a + d) * U;
+  const rows = [];
+  for (const t of YEARS) {
+    const k = t - 2024;
+    const enrol = K.ENROL0 * Math.pow(1 + p.enrol, k);
+    const gout = enrol * K.GOUT_PER;
+    const N = K.ENTRY0 * p.entryScale * gout;
+    const H = Math.min(H0 * Math.pow(1 + p.hire, k), 0.85 * (U + N));
+    const eps = employability(t, p);
+    const phi = Math.min(1, p.kappa * eps);
+    E = Eg + Eu;
+    rows.push({ year: t, gout: gout / 1e6, entrants: N / 1e6, hires: H / 1e6, eps: eps, U: U / 1e6,
+      Eg: Eg / 1e6, Eu: Eu / 1e6, LF: (E + U) / 1e6, ur: 100 * U / (E + U), under: 100 * Eu / E,
+      mismatch: 100 * (U + Eu) / (E + U), gap: (N - H) / 1e6 });
+    const Un = U * (1 - a - d) + N - H;
+    const Egn = Eg * (1 - a) + phi * H + u * Eu;
+    const Eun = Eu * (1 - a - u) + (1 - phi) * H;
+    U = Math.max(Un, 0); Eg = Egn; Eu = Eun;
+  }
+  return rows;
+}
+/*MODEL_END*/
+
+/* ---------- data: fact base ---------- */
+const PLFS = "https://www.mospi.gov.in/uploads/latestReleases/latest_release_1774607827733_3e8964a9-268b-4cc9-ad65-cfc8a9e32f08_Press_note_AR_PLFS_2025_23032025_V2.1_26032026_final.pdf";
+const AISHE21 = "https://education.gov.in/sites/upload_files/mhrd/files/statistics-new/AISHE%20Book_2021-22_4.pdf";
+const PIBAPR = "https://pib.gov.in/PressReleasePage.aspx?PRID=2261386";
+const FACTS = [
+  ["Unemployment rate, 15+, usual status, 2025", "3.1%", "PLFS Annual Report 2025, MoSPI", PLFS, "A"],
+  ["Youth (15-29) unemployment rate, usual status, 2025 (10.3% in 2024)", "9.9%", "PLFS Annual Report 2025, MoSPI", PLFS, "A"],
+  ["Urban youth / rural youth unemployment, usual status, 2025", "13.6% / 8.3%", "PLFS Annual Report 2025, MoSPI", PLFS, "A"],
+  ["Unemployment, 15+, secondary education and above, 2025 (7.0% in 2024)", "6.5%", "PLFS Annual Report 2025, MoSPI", PLFS, "A"],
+  ["Youth 15-29 not in employment, education or training, 2025", "about 25%", "PLFS Annual Report 2025, MoSPI", PLFS, "A"],
+  ["Same, age 15-24", "21.0%", "PLFS Annual Report 2025, MoSPI", PLFS, "A"],
+  ["Formal vocational or technical training, age 15-29 / 15-59", "5.0% / 4.2%", "PLFS Annual Report 2025, MoSPI", PLFS, "A"],
+  ["Persons employed, 15+, 2025", "61.6 crore", "PLFS Annual Report 2025, MoSPI", PLFS, "A"],
+  ["Agriculture share of employment / regular wage-salaried share, 2025", "43.0% / 23.6%", "PLFS Annual Report 2025, MoSPI", PLFS, "A"],
+  ["Youth 15-29 unemployment, current weekly status, April 2026", "15.3%", "PLFS Monthly Bulletin April 2026, MoSPI", PIBAPR, "A"],
+  ["Youth 15-29 unemployment, current weekly status, June 2026", "16.2%", "PLFS Monthly Bulletin June 2026, MoSPI", "", "A"],
+  ["Urban youth 15-29 unemployment, current weekly status, September 2026", "19.0%", "PLFS Monthly Bulletin September 2026, MoSPI", "", "A"],
+  ["Higher-education enrolment 2014-15 / 2022-23 / 2023-24", "3.42 / 4.46 / 4.50 crore", "AISHE 2022-23 and 2023-24, Ministry of Education (released 8 July 2026)", "", "A"],
+  ["Gross Enrolment Ratio, age 18-23, 2023-24", "30.0%", "AISHE 2023-24, Ministry of Education", "", "A"],
+  ["Undergraduate share of enrolment, 2023-24", "76.8%", "AISHE 2023-24, Ministry of Education", "", "A"],
+  ["Postgraduate share of enrolment, 2021-22 (latest verified)", "12.1%", "AISHE 2021-22, Ministry of Education", AISHE21, "A"],
+  ["Non-farm jobs to be generated per year until 2030", "78.5 lakh", "Economic Survey 2023-24, Ministry of Finance", "", "A"],
+  ["Net additions to the labour force per year over the next decade", "7-8 million", "India Employment Report 2024, ILO and IHD", "", "B"],
+  ["Youth share of all unemployed, 2022", "82.9%", "India Employment Report 2024, ILO and IHD", "", "B"],
+  ["Educated (secondary+) share of unemployed youth, 2022 (35.2% in 2000)", "65.7%", "India Employment Report 2024, ILO and IHD", "", "B"],
+  ["Graduate youth unemployment rate, 2022", "29.1%", "India Employment Report 2024, ILO and IHD", "", "B"],
+  ["Graduates aged 20-29, 2023 / of whom unemployed", "63 / 11 million", "State of Working India, Azim Premji University", "", "B"],
+  ["Graduates joining the labour force per year / jobs they secure", "5.0 / 2.8 million", "State of Working India, Azim Premji University", "", "B"],
+  ["Graduate employability, 2024 / 2025 / 2026 editions", "51.25 / 54.81 / 56.35%", "India Skills Report, Wheebox", "", "C"],
+  ["Employability of polytechnic / ITI graduates, 2026 edition", "32.92 / 45.95%", "India Skills Report, Wheebox", "", "C"],
+  ["Graduates completing a degree per year (from enrolment, assumed 3.3-year UG and 2-year PG programmes)", (K.GOUT0 / 1e6).toFixed(1) + " million", "Derived in this model from AISHE enrolment", "", "M"],
+  ["Share of a graduating cohort entering the labour force (set so 2024 gives 5.0 million entrants)", (K.ENTRY0 * 100).toFixed(1) + "%", "Calibrated in this model", "", "M"],
+  ["Share of hires in graduate-level roles, 2024 (employability used as an upper-bound proxy)", "51%", "Assumption in this model", "", "M"]
+];
+const TIER_NAME = { A: "A Official", B: "B Research", C: "C Private", M: "M Modelled" };
+
+/* ---------- state ---------- */
+const PRESETS = [
+  { id: "bau", name: "Business as usual", v: {} },
+  { id: "jobs", name: "Faster job creation", v: { hire: 0.08 } },
+  { id: "skills", name: "Skills reform", v: { empGain: 0.022 } },
+  { id: "enrol", name: "Enrolment push, no extra jobs", v: { enrol: 0.06 } },
+  { id: "combo", name: "Jobs, skills and steady enrolment", v: { hire: 0.08, empGain: 0.022, enrol: 0.04 } }
+];
+const SLIDERS = [
+  { k: "hire", label: "Growth in graduate hiring", min: 0, max: 0.10, step: 0.001, fmt: v => (v * 100).toFixed(1) + "% a year", hint: "How fast employers add graduate-level and other jobs for graduates, from 2.8 million in 2024." },
+  { k: "enrol", label: "Growth in enrolment", min: 0, max: 0.07, step: 0.001, fmt: v => (v * 100).toFixed(1) + "% a year", hint: "Decade average was 3.1%; last year 0.9%. The 50% GER goal implies about 6%." },
+  { k: "empGain", label: "Employability gain", min: 0, max: 0.03, step: 0.001, fmt: v => (v * 100).toFixed(1) + " points a year", hint: "Trend in the India Skills Report after 2026 (56.35%). Capped at 80%." },
+  { k: "kappa", label: "Graduate-level share of hires", min: 0.4, max: 1.0, step: 0.01, fmt: v => (v * 100).toFixed(0) + "% of employability", hint: "Assumption. At 100%, every employable hire gets a graduate-level job; lower means more under-employment." },
+  { k: "entryScale", label: "Graduates joining the labour force", min: 0.7, max: 1.3, step: 0.01, fmt: v => (v * 100).toFixed(0) + "% of today", hint: "Raise for higher female participation, lower for more graduates continuing study." },
+  { k: "discouraged", label: "Discouraged jobseekers leaving", min: 0.02, max: 0.20, step: 0.005, fmt: v => (v * 100).toFixed(1) + "% a year", hint: "Share of unemployed who stop looking. Re-balances the 2024 starting point." },
+  { k: "ur0", label: "Starting unemployment, 2024", min: 0.15, max: 0.35, step: 0.005, fmt: v => (v * 100).toFixed(1) + "%", hint: "ILO-IHD reports 29.1% for graduate youth; surveys differ by definition." }
+];
+const SWEEP = [
+  { k: "hire", name: "Hiring growth", lo: 0.02, hi: 0.08, f: v => (v * 100).toFixed(0) + "%" },
+  { k: "enrol", name: "Enrolment growth", lo: 0.01, hi: 0.05, f: v => (v * 100).toFixed(0) + "%" },
+  { k: "empGain", name: "Employability gain", lo: 0.005, hi: 0.022, f: v => (v * 100).toFixed(1) + " pts" },
+  { k: "kappa", name: "Graduate-level share", lo: 0.6, hi: 1.0, f: v => (v * 100).toFixed(0) + "%" },
+  { k: "entryScale", name: "Labour-force entry", lo: 0.85, hi: 1.15, f: v => (v * 100).toFixed(0) + "%" },
+  { k: "discouraged", name: "Discouraged exit", lo: 0.05, hi: 0.15, f: v => (v * 100).toFixed(0) + "%" },
+  { k: "ur0", name: "Starting unemployment", lo: 0.20, hi: 0.30, f: v => (v * 100).toFixed(0) + "%" }
+];
+const state = { p: Object.assign({}, DEFAULTS), year: 2035, preset: "bau", tier: "all" };
+const $ = id => document.getElementById(id);
+const BAU = run({});
+
+/* ---------- controls ---------- */
+function buildControls() {
+  const pr = $("presets");
+  PRESETS.forEach(pz => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = pz.name; b.dataset.id = pz.id;
+    b.addEventListener("click", () => { state.p = Object.assign({}, DEFAULTS, pz.v); state.preset = pz.id; syncControls(); render(); });
+    pr.appendChild(b);
+  });
+  const host = $("sliders");
+  SLIDERS.forEach(s => {
+    const d = document.createElement("div"); d.className = "ctl";
+    d.innerHTML = '<label for="s-' + s.k + '"><span>' + s.label + '</span><output id="o-' + s.k + '"></output></label>' +
+      '<input type="range" id="s-' + s.k + '" min="' + s.min + '" max="' + s.max + '" step="' + s.step + '"><small>' + s.hint + '</small>';
+    host.appendChild(d);
+    d.querySelector("input").addEventListener("input", e => {
+      state.p[s.k] = parseFloat(e.target.value); state.preset = matchPreset(); syncControls(); render();
+    });
+  });
+  $("reset").addEventListener("click", () => { state.p = Object.assign({}, DEFAULTS); state.preset = "bau"; syncControls(); render(); });
+  $("year").addEventListener("input", e => setYear(parseInt(e.target.value, 10)));
+}
+function matchPreset() {
+  for (const pz of PRESETS) {
+    const t = Object.assign({}, DEFAULTS, pz.v);
+    if (Object.keys(t).every(k => Math.abs(t[k] - state.p[k]) < 1e-9)) return pz.id;
+  }
+  return "custom";
+}
+function syncControls() {
+  document.querySelectorAll("#presets .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.id === state.preset)));
+  SLIDERS.forEach(s => { $("s-" + s.k).value = state.p[s.k]; $("o-" + s.k).textContent = s.fmt(state.p[s.k]); });
+}
+
+/* ---------- helpers ---------- */
+const f1 = v => v.toFixed(1);
+function niceTicks(lo, hi, n) {
+  const span = hi - lo, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) || mag * 10;
+  const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
+  return out;
+}
+function mk(tag, attrs, parent) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(el);
+  return el;
+}
+function txt(parent, x, y, s, attrs) { const t = mk("text", Object.assign({ x, y }, attrs || {}), parent); t.textContent = s; return t; }
+function frame(host, h, yMax, yFmt, opts) {
+  opts = opts || {};
+  host.innerHTML = "";
+  const w = Math.max(host.clientWidth, 260);
+  const m = { l: 38, r: opts.right === undefined ? 62 : opts.right, t: 10, b: 24 };
+  const svg = mk("svg", { viewBox: "0 0 " + w + " " + h, height: h, role: "img", "aria-label": opts.label || "chart" }, host);
+  const sx = y => m.l + (y - 2024) / 11 * (w - m.l - m.r);
+  const sy = v => m.t + (1 - v / yMax) * (h - m.t - m.b);
+  niceTicks(0, yMax, 4).forEach(v => {
+    mk("line", { x1: m.l, x2: w - m.r, y1: sy(v), y2: sy(v), class: "grid" }, svg);
+    txt(svg, m.l - 6, sy(v) + 4, yFmt(v), { "text-anchor": "end" });
+  });
+  [2024, 2027, 2030, 2033, 2035].forEach(y => txt(svg, sx(y), h - 6, String(y), { "text-anchor": "middle" }));
+  mk("line", { x1: m.l, x2: w - m.r, y1: sy(0), y2: sy(0), class: "axis" }, svg);
+  return { svg, w, h, m, sx, sy };
+}
+function addHover(g, onYear) {
+  const hit = mk("rect", { x: g.m.l - 10, y: 0, width: g.w - g.m.l - g.m.r + 20, height: g.h, fill: "transparent", style: "cursor:crosshair" }, g.svg);
+  const pick = e => {
+    const r = g.svg.getBoundingClientRect();
+    const x = (e.clientX - r.left) * (g.w / r.width);
+    const yr = Math.round(2024 + (x - g.m.l) / (g.w - g.m.l - g.m.r) * 11);
+    onYear(Math.min(2035, Math.max(2024, yr)));
+  };
+  hit.addEventListener("pointermove", pick);
+  hit.addEventListener("pointerdown", pick);
+}
+function guide(g, rows, key, color) {
+  const x = g.sx(state.year);
+  mk("line", { x1: x, x2: x, y1: g.m.t, y2: g.h - g.m.b, stroke: "var(--ghost)", "stroke-width": 1, "stroke-dasharray": "3 3" }, g.svg);
+  if (key) {
+    const r = rows[state.year - 2024];
+    mk("circle", { cx: x, cy: g.sy(r[key]), r: 4.5, fill: color, stroke: "var(--surface)", "stroke-width": 2 }, g.svg);
+  }
+}
+const path = (g, rows, key) => rows.map((r, i) => (i ? "L" : "M") + g.sx(r.year).toFixed(1) + " " + g.sy(r[key]).toFixed(1)).join(" ");
+function differs() { return state.preset !== "bau"; }
+
+/* ---------- charts ---------- */
+function chartA(rows) {
+  const ymax = Math.max(...rows.map(r => r.entrants), ...BAU.map(r => r.entrants), ...BAU.map(r => r.hires)) * 1.12;
+  const g = frame($("chA"), 250, ymax, v => v.toFixed(0), { label: "Graduate entrants versus hires per year, millions" });
+  const area = path(g, rows, "entrants") + rows.slice().reverse().map(r => "L" + g.sx(r.year).toFixed(1) + " " + g.sy(r.hires).toFixed(1)).join(" ") + "Z";
+  mk("path", { d: area, fill: "var(--s1)", opacity: 0.12 }, g.svg);
+  if (differs()) mk("path", { d: path(g, BAU, "hires"), fill: "none", stroke: "var(--ghost)", "stroke-width": 1.75, "stroke-dasharray": "5 4" }, g.svg);
+  mk("path", { d: path(g, rows, "entrants"), fill: "none", stroke: "var(--s1)", "stroke-width": 2.25, "stroke-linecap": "round" }, g.svg);
+  mk("path", { d: path(g, rows, "hires"), fill: "none", stroke: "var(--s2)", "stroke-width": 2.25, "stroke-linecap": "round" }, g.svg);
+  const L = rows[rows.length - 1];
+  txt(g.svg, g.sx(2035) + 8, g.sy(L.entrants) + 4, f1(L.entrants) + "m", { class: "strong" });
+  txt(g.svg, g.sx(2035) + 8, g.sy(L.hires) + 4, f1(L.hires) + "m", { class: "strong" });
+  guide(g, rows, "entrants", "var(--s1)");
+  const r = rows[state.year - 2024];
+  mk("circle", { cx: g.sx(state.year), cy: g.sy(r.hires), r: 4.5, fill: "var(--s2)", stroke: "var(--surface)", "stroke-width": 2 }, g.svg);
+  addHover(g, setYear);
+  $("lg-a-ghost").hidden = !differs();
+}
+function chartB(rows) {
+  const ymax = Math.max(40, Math.ceil(Math.max(...rows.map(r => r.ur), ...BAU.map(r => r.ur)) / 10) * 10);
+  const g = frame($("chB"), 250, ymax, v => v + "%", { label: "Graduate-youth unemployment rate, percent" });
+  if (differs()) mk("path", { d: path(g, BAU, "ur"), fill: "none", stroke: "var(--ghost)", "stroke-width": 1.75, "stroke-dasharray": "5 4" }, g.svg);
+  mk("path", { d: path(g, rows, "ur"), fill: "none", stroke: "var(--s2)", "stroke-width": 2.5, "stroke-linecap": "round", "stroke-linejoin": "round" }, g.svg);
+  const L = rows[rows.length - 1];
+  txt(g.svg, g.sx(2035) + 8, g.sy(L.ur) + 4, f1(L.ur) + "%", { class: "strong" });
+  txt(g.svg, g.sx(2024) + 2, g.sy(rows[0].ur) - 10, f1(rows[0].ur) + "% start", {});
+  guide(g, rows, "ur", "var(--s2)");
+  addHover(g, setYear);
+  $("lg-b-ghost").hidden = !differs();
+}
+function chartC(rows) {
+  const ymax = Math.ceil(Math.max(...rows.map(r => r.LF)) / 10) * 10;
+  const g = frame($("chC"), 250, ymax, v => v.toFixed(0), { right: 14, label: "Graduate labour force by work outcome, millions" });
+  const bw = Math.max(6, (g.w - g.m.l - g.m.r) / 12 * 0.7);
+  rows.forEach(r => {
+    const x = g.sx(r.year) - bw / 2;
+    let base = 0;
+    [["Eg", "var(--s1)"], ["Eu", "var(--s3)"], ["U", "var(--s2)"]].forEach(([k, c]) => {
+      const y1 = g.sy(base + r[k]), y0 = g.sy(base);
+      mk("rect", { x, y: y1, width: bw, height: Math.max(0, y0 - y1), fill: c, stroke: "var(--surface)", "stroke-width": 2, opacity: r.year === state.year ? 1 : 0.82 }, g.svg);
+      base += r[k];
+    });
+  });
+  guide(g, rows, null);
+  addHover(g, setYear);
+}
+function chartD() {
+  const rows = SWEEP.map(s => {
+    const lo = run(Object.assign({}, state.p, { [s.k]: s.lo }))[11].ur;
+    const hi = run(Object.assign({}, state.p, { [s.k]: s.hi }))[11].ur;
+    return Object.assign({}, s, { ulo: lo, uhi: hi, swing: Math.abs(hi - lo) });
+  }).sort((a, b) => b.swing - a.swing);
+  const base = run(state.p)[11].ur;
+  const host = $("chD"); host.innerHTML = "";
+  const w = Math.max(host.clientWidth, 260), rowH = 38, top = 8, h = top + rows.length * rowH + 22;
+  const svg = mk("svg", { viewBox: "0 0 " + w + " " + h, height: h, role: "img", "aria-label": "Sensitivity of 2035 unemployment to each input" }, host);
+  const vals = rows.flatMap(r => [r.ulo, r.uhi, base]);
+  let lo = Math.floor(Math.min(...vals) / 5) * 5 - 2, hi = Math.ceil(Math.max(...vals) / 5) * 5 + 2; lo = Math.max(0, lo);
+  const ml = 8, mr = 8, sx = v => ml + (v - lo) / (hi - lo) * (w - ml - mr);
+  niceTicks(lo, hi, 5).forEach(v => {
+    mk("line", { x1: sx(v), x2: sx(v), y1: top, y2: h - 20, class: "grid" }, svg);
+    txt(svg, sx(v), h - 6, v + "%", { "text-anchor": "middle" });
+  });
+  rows.forEach((r, i) => {
+    const y = top + i * rowH;
+    txt(svg, ml, y + 12, r.name + " (" + r.f(r.lo) + " to " + r.f(r.hi) + ")", { class: "strong" });
+    const by = y + 18, bh = 11;
+    [[r.ulo, "var(--s3)"], [r.uhi, "var(--s1)"]].forEach(([u, c]) => {
+      const x0 = Math.min(sx(base), sx(u)), wd = Math.abs(sx(u) - sx(base));
+      mk("rect", { x: x0, y: by, width: Math.max(wd, 2), height: bh, rx: 2, fill: c, opacity: 0.95, stroke: "var(--surface)", "stroke-width": 1 }, svg);
+    });
+    const left = r.ulo < r.uhi ? r.ulo : r.uhi, right = r.ulo < r.uhi ? r.uhi : r.ulo;
+    txt(svg, sx(right) + 5, by + 10, f1(right) + "%", { class: "strong" });
+    if (sx(left) - 38 > ml) txt(svg, sx(left) - 5, by + 10, f1(left) + "%", { "text-anchor": "end", class: "strong" });
+  });
+  mk("line", { x1: sx(base), x2: sx(base), y1: top, y2: h - 20, stroke: "var(--ink)", "stroke-width": 1.5 }, svg);
+}
+
+/* ---------- KPIs, readout, table ---------- */
+function delta(v, ref, unit) {
+  const d = v - ref; if (Math.abs(d) < 0.05) return "same as business as usual";
+  return Math.abs(d).toFixed(1) + unit + (d < 0 ? " lower" : " higher") + " than business as usual";
+}
+function renderKpis(rows) {
+  const L = rows[11], B = BAU[11];
+  const cum = rows.reduce((s, r) => s + r.gap, 0), cumB = BAU.reduce((s, r) => s + r.gap, 0);
+  const tiles = [
+    ["Graduate-youth unemployment, 2035", f1(L.ur), "%", "2024 start: " + f1(rows[0].ur) + "%. " + delta(L.ur, B.ur, " pts")],
+    ["Working below qualification, 2035", f1(L.under), "% of employed", "Modelled. 2024: " + f1(rows[0].under) + "%. " + delta(L.under, B.under, " pts")],
+    ["Unemployed graduates, 2035", f1(L.U), " million", "2024: " + f1(rows[0].U) + " million. " + delta(L.U, B.U, "m")],
+    ["Entrants minus hires, 2024-2035", f1(cum), " million", delta(cum, cumB, "m")]
+  ];
+  $("kpis").innerHTML = tiles.map(t => '<div class="kpi"><div class="lab">' + t[0] + '</div><div class="val">' + t[1] + '<span>' + t[2] + '</span></div><div class="cmp">' + t[3] + '</div></div>').join("");
+}
+function renderRead(rows) {
+  const r = rows[state.year - 2024];
+  $("yr").textContent = state.year; $("year").value = state.year;
+  $("read").innerHTML = "<b>" + state.year + "</b>: " + f1(r.entrants) + "m graduates enter the labour force and " + f1(r.hires) + "m are hired. Unemployment " + f1(r.ur) +
+    "%, " + f1(r.U) + "m jobless, " + f1(r.Eu) + "m in jobs below their qualification. Employability " + (r.eps * 100).toFixed(1) + "%.";
+}
+function renderTable(rows) {
+  const head = ["Year", "Graduates out (m)", "Entrants (m)", "Hires (m)", "Employability", "Unemployed (m)", "Graduate-level jobs (m)", "Below-qualification jobs (m)", "Unemployment", "Under-employed share"];
+  $("tbl").innerHTML = "<thead><tr>" + head.map(h => "<th>" + h + "</th>").join("") + "</tr></thead><tbody>" +
+    rows.map(r => '<tr class="' + (r.year === state.year ? "sel" : "") + '"><td>' + r.year + "</td><td>" + f1(r.gout) + "</td><td>" + f1(r.entrants) + "</td><td>" + f1(r.hires) + "</td><td>" + (r.eps * 100).toFixed(1) + "%</td><td>" + f1(r.U) + "</td><td>" + f1(r.Eg) + "</td><td>" + f1(r.Eu) + "</td><td>" + f1(r.ur) + "%</td><td>" + f1(r.under) + "%</td></tr>").join("") + "</tbody>";
+}
+let raf = 0;
+function setYear(y) { if (y === state.year) return; state.year = y; cancelAnimationFrame(raf); raf = requestAnimationFrame(render); }
+function render() {
+  const rows = run(state.p);
+  renderKpis(rows); renderRead(rows); chartA(rows); chartB(rows); chartC(rows); chartD(); renderTable(rows);
+}
+
+/* ---------- fact base view ---------- */
+function renderFacts() {
+  const rows = FACTS.filter(f => state.tier === "all" || f[4] === state.tier);
+  $("facts").innerHTML = "<thead><tr><th>Fact</th><th>Value</th><th>Source</th><th>Tier</th></tr></thead><tbody>" +
+    rows.map(f => "<tr><td>" + f[0] + '</td><td class="v">' + f[1] + "</td><td>" + (f[3] ? '<a href="' + f[3] + '" target="_blank" rel="noopener">' + f[2] + "</a>" : f[2]) +
+      '</td><td><span class="tier">' + TIER_NAME[f[4]] + "</span></td></tr>").join("") + "</tbody>";
+  document.querySelectorAll("#tierFilters .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.t === state.tier)));
+}
+function buildFacts() {
+  const host = $("tierFilters");
+  [["all", "All"], ["A", "A Official"], ["B", "B Research"], ["C", "C Private"], ["M", "M Modelled"]].forEach(([t, n]) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = n; b.dataset.t = t;
+    b.addEventListener("click", () => { state.tier = t; renderFacts(); });
+    host.appendChild(b);
+  });
+  renderFacts();
+}
+function showTab(which) {
+  $("view-sim").hidden = which !== "sim"; $("view-facts").hidden = which !== "facts";
+  $("tab-sim").setAttribute("aria-pressed", String(which === "sim")); $("tab-facts").setAttribute("aria-pressed", String(which === "facts"));
+  if (which === "sim") render();
+}
+$("tab-sim").addEventListener("click", () => showTab("sim"));
+$("tab-facts").addEventListener("click", () => showTab("facts"));
+
+if (typeof document !== "undefined" && document.getElementById("presets")) {
+  buildControls(); syncControls(); buildFacts(); render();
+  let rt = 0; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("view-sim").hidden) render(); }, 120); });
+}
+</script>
+
+</body>
+</html>
